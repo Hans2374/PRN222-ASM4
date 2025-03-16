@@ -8,40 +8,55 @@
 @inject IAntiforgery Antiforgery
 @inject IHttpContextAccessor HttpContextAccessor
 @inject IJSRuntime JSRuntime
+@attribute [AllowAnonymous]
 
 <PageTitle>Login - Payment System</PageTitle>
 
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="text-center">Login</h3>
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h3 class="text-center mb-0">Login</h3>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 @if (!string.IsNullOrEmpty(errorMessage))
                 {
-                    <div class="alert alert-danger">
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
                         @errorMessage
+                        <button type="button" class="btn-close" @onclick="ClearError" aria-label="Close"></button>
                     </div>
                 }
 
-                <form action="/Account/Login" method="post" @onsubmit="PreventDefaultSubmit">
+                <form action="/api/account/login" method="post" @onsubmit="PreventDefaultSubmit">
                     <input name="__RequestVerificationToken" type="hidden" value="@requestToken" />
 
+                    @if (!string.IsNullOrEmpty(returnUrl))
+                    {
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    }
+
                     <div class="form-group mb-3">
-                        <label>Username</label>
-                        <input type="text" class="form-control" name="username" value="@loginModel.Username" 
-                               @oninput="(e) => loginModel.Username = e.Value?.ToString()" required />
+                        <label class="form-label">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                            <input type="text" class="form-control" name="username" value="@loginModel.Username"
+                                   @oninput="(e) => loginModel.Username = e.Value?.ToString()" required />
+                        </div>
                     </div>
 
                     <div class="form-group mb-3">
-                        <label>Password</label>
-                        <input type="password" class="form-control" name="password" value="@loginModel.Password" 
-                               @oninput="(e) => loginModel.Password = e.Value?.ToString()" required />
+                        <label class="form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                            <input type="password" class="form-control" name="password" value="@loginModel.Password"
+                                   @oninput="(e) => loginModel.Password = e.Value?.ToString()" required />
+                        </div>
                     </div>
 
-                    <div class="d-grid mt-4">
-                        <button type="submit" class="btn btn-primary" @onclick="SubmitForm">Login</button>
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary" @onclick="SubmitForm">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                        </button>
                     </div>
                 </form>
             </div>
@@ -56,9 +71,17 @@
     private string? errorMessage;
     private string? requestToken;
     private ElementReference formRef;
+    private string? returnUrl;
 
     protected override void OnInitialized()
     {
+        // Get return URL if any
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("returnUrl", out var url))
+        {
+            returnUrl = url;
+        }
+
         // If coming from logout (with fresh parameter)
         if (fresh == "true")
         {
@@ -72,14 +95,11 @@
             var token = Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext);
             requestToken = token.RequestToken;
         }
-        var tokens = Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext);
-        requestToken = tokens.RequestToken;
 
-        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
         if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("error", out var error))
         {
-            errorMessage = error == "InvalidCredentials" 
-                ? "Invalid username or password" 
+            errorMessage = error == "InvalidCredentials"
+                ? "Invalid username or password"
                 : "An error occurred during login";
         }
     }
@@ -106,7 +126,12 @@
     private async Task SubmitForm()
     {
         // Submit the form programmatically
-        await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('form').submit()");
+        await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('form').submit();");
+    }
+
+    private void ClearError()
+    {
+        errorMessage = null;
     }
 
     public class LoginModel

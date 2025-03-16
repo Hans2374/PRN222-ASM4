@@ -5,150 +5,171 @@
 @inject NavigationManager navigationManager
 @inject IHttpContextAccessor HttpContextAccessor
 
+<PageTitle>Payment List</PageTitle>
+
 <h3>Payment List</h3>
 
-<!-- Search Form -->
-<div class="mb-3 d-flex">
-    <div class="me-2">
-        <label>Child ID</label>
-        <InputNumber class="form-control" @bind-Value="searchChildId" />
-    </div>
-    <div class="me-2">
-        <label>Status</label>
-        <select class="form-control" @bind="searchStatus">
-            <option value="">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Completed">Completed</option>
-            <option value="Failed">Failed</option>
-        </select>
-    </div>
-    <div class="me-2">
-        <label>Payment Date</label>
-        <InputDate class="form-control" @bind-Value="searchDate" />
-    </div>
-    <div class="d-flex align-items-end">
-        <button type="button" class="btn btn-primary" @onclick="SearchPayments">Search</button>
-    </div>
-</div>
-
-<!-- Create Button -->
-<div class="mb-3">
-    <button type="button" class="btn btn-success" @onclick="Create">
-        + Create Payment
-    </button>
-</div>
-
-@if (!string.IsNullOrEmpty(message))
-{
-    <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
-        @message
-        <button type="button" class="btn-close" @onclick="ClearMessage" aria-label="Close"></button>
-    </div>
-}
-
-@if (payments == null)
-{
-    <div class="d-flex justify-content-center">
-        <p>Loading...</p>
-    </div>
-}
-else
-{
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th @onclick="SortByAmount" style="cursor: pointer;">
-                    Amount
-                    @if (sortColumn == "Amount")
-                    {
-                        <span>@(sortAscending ? "↑" : "↓")</span>
-                    }
-                </th>
-                <th>Payment Status</th>
-                <th>Payment Method</th>
-                <th @onclick="SortByDate" style="cursor: pointer;">
-                    Payment Date
-                    @if (sortColumn == "Date")
-                    {
-                        <span>@(sortAscending ? "↑" : "↓")</span>
-                    }
-                </th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var payment in pagedPayments)
-            {
-                <tr>
-                    <td>$@(payment.Amount.ToString("0.00"))</td>
-                    <td>@payment.PaymentStatus</td>
-                    <td>@payment.PaymentMethod</td>
-                    <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
-                    <td>
-                        <button type="button" class="btn btn-info btn-sm" @onclick="() => View(payment.PaymentId)">
-                            Detail
-                        </button>
-                        <button type="button" class="btn btn-warning btn-sm" @onclick="() => Edit(payment.PaymentId)">
-                            Edit
-                        </button>
-                        <button type="button" class="btn btn-danger btn-sm" @onclick="() => ConfirmDelete(payment.PaymentId)">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-
-    <!-- Pagination Controls -->
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <span>Showing @(((currentPage - 1) * pageSize) + 1) to @(Math.Min(currentPage * pageSize, payments.Count)) of @payments.Count entries</span>
-        </div>
-        <nav aria-label="Page navigation">
-            <ul class="pagination">
-                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                    <button class="page-link" @onclick="() => NavigateToPage(currentPage - 1)" disabled="@(currentPage == 1)">Previous</button>
-                </li>
-
-                @for (int i = startPage; i <= endPage; i++)
-                {
-                    var pageNumber = i;
-                    <li class="page-item @(pageNumber == currentPage ? "active" : "")">
-                        <button class="page-link" @onclick="() => NavigateToPage(pageNumber)">@pageNumber</button>
-                    </li>
-                }
-
-                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-                    <button class="page-link" @onclick="() => NavigateToPage(currentPage + 1)" disabled="@(currentPage == totalPages)">Next</button>
-                </li>
-            </ul>
-        </nav>
-    </div>
-}
-
-<!-- Delete Confirmation Modal -->
-@if (showDeleteConfirmation)
-{
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm Delete</h5>
-                    <button type="button" class="btn-close" @onclick="CancelDelete" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to delete Payment #@paymentIdToDelete?</p>
-                    <p class="text-danger">This action cannot be undone.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
-                    <button type="button" class="btn btn-danger" @onclick="DeletePayment">Delete</button>
-                </div>
+<AuthorizeView>
+    <Authorized>
+        <!-- Search Form -->
+        <div class="mb-3 d-flex">
+            <div class="me-2">
+                <label>Child ID</label>
+                <InputNumber class="form-control" @bind-Value="searchChildId" />
+            </div>
+            <div class="me-2">
+                <label>Status</label>
+                <select class="form-control" @bind="searchStatus">
+                    <option value="">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Failed">Failed</option>
+                </select>
+            </div>
+            <div class="me-2">
+                <label>Payment Date</label>
+                <InputDate class="form-control" @bind-Value="searchDate" />
+            </div>
+            <div class="d-flex align-items-end">
+                <button type="button" class="btn btn-primary" @onclick="SearchPayments">Search</button>
             </div>
         </div>
-    </div>
-}
+
+        <!-- Create Button -->
+        <div class="mb-3">
+            <button type="button" class="btn btn-success" @onclick="Create">
+                + Create Payment
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
+                @message
+                <button type="button" class="btn-close" @onclick="ClearMessage" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (payments == null)
+        {
+            <div class="d-flex justify-content-center">
+                <p>Loading...</p>
+            </div>
+        }
+        else
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th @onclick="SortByAmount" style="cursor: pointer;">
+                            Amount
+                            @if (sortColumn == "Amount")
+                            {
+                                <span>@(sortAscending ? "↑" : "↓")</span>
+                            }
+                        </th>
+                        <th>Payment Status</th>
+                        <th>Payment Method</th>
+                        <th @onclick="SortByDate" style="cursor: pointer;">
+                            Payment Date
+                            @if (sortColumn == "Date")
+                            {
+                                <span>@(sortAscending ? "↑" : "↓")</span>
+                            }
+                        </th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var payment in pagedPayments)
+                    {
+                        <tr>
+                            <td>$@(payment.Amount.ToString("0.00"))</td>
+                            <td>@payment.PaymentStatus</td>
+                            <td>@payment.PaymentMethod</td>
+                            <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <button type="button" class="btn btn-info btn-sm" @onclick="() => View(payment.PaymentId)">
+                                    Detail
+                                </button>
+                                <button type="button" class="btn btn-warning btn-sm" @onclick="() => Edit(payment.PaymentId)">
+                                    Edit
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" @onclick="() => ConfirmDelete(payment.PaymentId)">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <!-- Pagination Controls -->
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span>Showing @(((currentPage - 1) * pageSize) + 1) to @(Math.Min(currentPage * pageSize, payments.Count)) of @payments.Count entries</span>
+                </div>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => NavigateToPage(currentPage - 1)" disabled="@(currentPage == 1)">Previous</button>
+                        </li>
+
+                        @for (int i = startPage; i <= endPage; i++)
+                        {
+                            var pageNumber = i;
+                            <li class="page-item @(pageNumber == currentPage ? "active" : "")">
+                                <button class="page-link" @onclick="() => NavigateToPage(pageNumber)">@pageNumber</button>
+                            </li>
+                        }
+
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => NavigateToPage(currentPage + 1)" disabled="@(currentPage == totalPages)">Next</button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+
+        <!-- Delete Confirmation Modal -->
+        @if (showDeleteConfirmation)
+        {
+            <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Confirm Delete</h5>
+                            <button type="button" class="btn-close" @onclick="CancelDelete" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to delete Payment #@paymentIdToDelete?</p>
+                            <p class="text-danger">This action cannot be undone.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                            <button type="button" class="btn btn-danger" @onclick="DeletePayment">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <div class="card shadow">
+            <div class="card-body text-center p-5">
+                <div class="mb-4">
+                    <i class="bi bi-lock-fill" style="font-size: 3rem; color: #dc3545;"></i>
+                </div>
+                <h4>Access Restricted</h4>
+                <p class="lead mb-4">You need to log in to access the Payment Management system.</p>
+                <p class="text-muted mb-4">This area contains sensitive financial information and requires authentication.</p>
+                <a href="/Account/Login?returnUrl=/Payment/PaymentList" class="btn btn-primary btn-lg">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Log In
+                </a>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
     private List<Payment>? payments;

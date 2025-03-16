@@ -1,6 +1,25 @@
-﻿<Router AppAssembly="typeof(Program).Assembly">
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+
+<Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated != true)
+                {
+                    <RedirectToLogin />
+                }
+                else
+                {
+                    <PageTitle>Access Denied</PageTitle>
+                    <LayoutView Layout="typeof(Layout.MainLayout)">
+                        <div class="alert alert-danger">
+                            <p>You are not authorized to access this resource.</p>
+                        </div>
+                    </LayoutView>
+                }
+            </NotAuthorized>
+        </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
     <NotFound>
@@ -10,3 +29,18 @@
         </LayoutView>
     </NotFound>
 </Router>
+
+@code {
+    // This component handles redirection to the login page when a user
+    // is not authenticated but tries to access a protected resource
+    private class RedirectToLogin : ComponentBase
+    {
+        [Inject]
+        private NavigationManager Navigation { get; set; } = default!;
+
+        protected override void OnInitialized()
+        {
+            Navigation.NavigateTo($"/Account/Login?returnUrl={Uri.EscapeDataString(Navigation.Uri)}", true);
+        }
+    }
+}

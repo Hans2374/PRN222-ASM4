@@ -1,0 +1,109 @@
+﻿@page "/Account/Profile"
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@attribute [Authorize]
+
+<PageTitle>User Profile</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">User Profile</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center mb-4 mb-md-0">
+                                <div class="avatar-circle mb-3">
+                                    <span class="initials">@GetInitials(context.User.FindFirstValue("FullName"))</span>
+                                </div>
+                                <h4>@context.User.FindFirstValue("FullName")</h4>
+                                <p class="text-muted">@GetRoleName(context.User.FindFirstValue(ClaimTypes.Role))</p>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="user-details">
+                                    <div class="mb-3">
+                                        <h5>Account Information</h5>
+                                        <hr />
+                                        <div class="row mb-2">
+                                            <div class="col-4 fw-bold">Username:</div>
+                                            <div class="col-8">@context.User.Identity?.Name</div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-4 fw-bold">User ID:</div>
+                                            <div class="col-8">@context.User.FindFirstValue("UserId")</div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-4 fw-bold">Role:</div>
+                                            <div class="col-8">@GetRoleName(context.User.FindFirstValue(ClaimTypes.Role))</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <a href="/" class="btn btn-secondary">Back to Home</a>
+                            <a href="/Account/Logout" class="btn btn-outline-danger">
+                                <i class="bi bi-box-arrow-right me-2"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning">
+            You must log in to view your profile.
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+<style>
+    .avatar-circle {
+        width: 100px;
+        height: 100px;
+        background-color: #007bff;
+        border-radius: 50%;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+    }
+
+    .initials {
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+</style>
+
+@code {
+    private string GetInitials(string fullName)
+    {
+        if (string.IsNullOrEmpty(fullName))
+            return "?";
+
+        var parts = fullName.Split(' ');
+        if (parts.Length == 1)
+            return parts[0].Substring(0, 1).ToUpper();
+
+        return (parts[0].Substring(0, 1) + parts[parts.Length - 1].Substring(0, 1)).ToUpper();
+    }
+
+    private string GetRoleName(string roleId)
+    {
+        return roleId switch
+        {
+            "1" => "Administrator",
+            "2" => "Doctor",
+            "3" => "Receptionist",
+            "4" => "Nurse",
+            _ => "User"
+        };
+    }
+}
