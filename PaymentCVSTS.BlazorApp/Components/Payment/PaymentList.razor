@@ -1,11 +1,9 @@
 ﻿@page "/Payment/PaymentList"
-@using Microsoft.AspNetCore.Authorization
 @using PaymentCVSTS.Services.Interfaces
 @inject IPaymentService paymentService
 @attribute [StreamRendering]
 @inject NavigationManager navigationManager
 @inject IHttpContextAccessor HttpContextAccessor
-@attribute [Authorize(Roles = "Admin,Doctor,User")]
 
 <h3>Payment List</h3>
 
@@ -179,14 +177,6 @@ else
     protected override async Task OnInitializedAsync()
     {
         payments = await paymentService.GetAll();
-
-        // Check if user has delete permission
-        var user = HttpContextAccessor.HttpContext?.User;
-        if (user != null && user.Identity?.IsAuthenticated == true)
-        {
-            // Only Admin users can delete payments
-            CanDelete = user.IsInRole("Admin");
-        }
     }
 
     private async Task SearchPayments()

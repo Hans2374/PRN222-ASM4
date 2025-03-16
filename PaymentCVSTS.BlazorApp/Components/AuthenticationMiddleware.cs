@@ -66,8 +66,9 @@ namespace PaymentCVSTS.BlazorApp.Components
                 }
                 catch (AntiforgeryValidationException)
                 {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsync("Invalid antiforgery token.");
+                    // Instead of returning an error, generate a new token and redirect back to login
+                    var tokens = _antiforgery.GetAndStoreTokens(context);
+                    context.Response.Redirect("/Account/Login?error=TokenExpired");
                     return;
                 }
             }

@@ -1,10 +1,8 @@
 ﻿@page "/Payment/PaymentDetail/{id:int}"
-@using Microsoft.AspNetCore.Authorization
 @using PaymentCVSTS.Services.Interfaces
 @inject IPaymentService paymentService
 @inject IAppointmentService appointmentService
 @inject NavigationManager nav
-@attribute [Authorize(Roles = "Admin,Doctor,User")]
 @inject IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>Payment Detail</PageTitle>
@@ -123,13 +121,6 @@ else
         {
             appointment = await appointmentService.GetById(payment.AppointmentId);
         }
-
-        var user = HttpContextAccessor.HttpContext?.User;
-        if (user != null && user.Identity?.IsAuthenticated == true)
-        {
-            // Only Admin users can delete payments
-            CanDelete = user.IsInRole("Admin");
-        }
     }
 
     private string GetStatusBadgeClass(string status)
@@ -147,13 +138,6 @@ else
 
     private async Task DeletePayment(int id)
     {
-        var user = HttpContextAccessor.HttpContext?.User;
-        if (user == null || !user.IsInRole("Admin"))
-        {
-            errorMessage = "You don't have permission to delete this payment!";
-            return;
-        }
-
         var result = await paymentService.Delete(id);
         if (result)
         {

@@ -1,10 +1,5 @@
-﻿@using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Authentication.Cookies
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Http
-@inject IHttpContextAccessor HttpContextAccessor
+﻿@inject IJSRuntime JSRuntime
 @inherits LayoutComponentBase
-@attribute [Authorize(Roles = "Admin,Doctor,User")]
 
 <div class="page">
     <div class="sidebar">
@@ -14,25 +9,7 @@
     <main>
         <div class="top-row px-4">
             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-            @if (HttpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated == true)
-            {
-                <div class="nav-item">
-                    <span class="nav-link text-dark">
-                        Hello, @HttpContextAccessor.HttpContext.User.Identity.Name
-                    </span>
-                </div>
-                <div class="nav-item">
-                    <a class="nav-link btn btn-outline-danger" href="javascript:void(0);" @onclick="Logout">Logout</a>
-                </div>
-            }
-            else
-            {
-                <div class="nav-item">
-                    <a class="nav-link btn btn-outline-primary" href="/Account/Login">Login</a>
-                </div>
-            }
         </div>
-
         <article class="content px-4">
             @Body
         </article>
@@ -44,17 +21,3 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
-
-@code {
-    private async Task Logout()
-    {
-        var authService = HttpContextAccessor.HttpContext?.RequestServices
-            .GetRequiredService<IAuthenticationService>();
-
-        if (authService != null && HttpContextAccessor.HttpContext != null)
-        {
-            await authService.SignOutAsync(HttpContextAccessor.HttpContext, CookieAuthenticationDefaults.AuthenticationScheme, null);
-            HttpContextAccessor.HttpContext.Response.Redirect("/Account/Login");
-        }
-    }
-}

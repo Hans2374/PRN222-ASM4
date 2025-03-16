@@ -1,9 +1,7 @@
 ﻿@page "/Payment/PaymentCreate"
-@using Microsoft.AspNetCore.Authorization
 @using PaymentCVSTS.Services.Interfaces
 @inject IPaymentService paymentService
 @inject IAppointmentService appointmentService
-@attribute [Authorize(Roles = "Admin,Doctor")]
 
 <PageTitle>Create Payment</PageTitle>
 

@@ -1,4 +1,5 @@
 ﻿@page "/Account/Login"
+@page "/Account/Login/{fresh}"
 @using Microsoft.AspNetCore.Antiforgery
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.WebUtilities
@@ -49,6 +50,8 @@
 </div>
 
 @code {
+    [Parameter]
+    public string? fresh { get; set; }
     private LoginModel loginModel = new LoginModel();
     private string? errorMessage;
     private string? requestToken;
@@ -56,6 +59,19 @@
 
     protected override void OnInitialized()
     {
+        // If coming from logout (with fresh parameter)
+        if (fresh == "true")
+        {
+            // Force a new antiforgery token
+            var token = Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext);
+            requestToken = token.RequestToken;
+        }
+        else
+        {
+            // Normal initialization
+            var token = Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext);
+            requestToken = token.RequestToken;
+        }
         var tokens = Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext);
         requestToken = tokens.RequestToken;
 
@@ -65,6 +81,19 @@
             errorMessage = error == "InvalidCredentials" 
                 ? "Invalid username or password" 
                 : "An error occurred during login";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Generate a fresh token on every page load
+            var tokens = Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext);
+            requestToken = tokens.RequestToken;
+
+            // Force the component to re-render with the new token
+            StateHasChanged();
         }
     }
 
