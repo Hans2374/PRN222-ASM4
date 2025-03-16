@@ -1,0 +1,177 @@
+﻿@page "/Payment/PaymentDetail/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using PaymentCVSTS.Services.Interfaces
+@inject IPaymentService paymentService
+@inject IAppointmentService appointmentService
+@inject NavigationManager nav
+@attribute [Authorize(Roles = "Admin,Doctor,User")]
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Payment Detail</PageTitle>
+
+<h3>Payment Detail</h3>
+
+@if (payment == null)
+{
+    <div class="d-flex justify-content-center">
+        <p>Loading...</p>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header">
+            <h5>Payment #@payment.PaymentId</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="mb-3">Payment Information</h6>
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th>Amount</th>
+                                <td>@((int)payment.Amount)</td>
+                            </tr>
+                            <tr>
+                                <th>Payment Status</th>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(payment.PaymentStatus)">
+                                        @payment.PaymentStatus
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Payment Method</th>
+                                <td>@payment.PaymentMethod</td>
+                            </tr>
+                            <tr>
+                                <th>Payment Date</th>
+                                <td>@payment.PaymentDate.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="col-md-6">
+                    <h6 class="mb-3">Appointment Information</h6>
+                    @if (appointment != null)
+                    {
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <th>Appointment ID</th>
+                                    <td>@appointment.AppointmentId</td>
+                                </tr>
+                                <tr>
+                                    <th>Booking Date</th>
+                                    <td>@appointment.BookingDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                </tr>
+                                <tr>
+                                    <th>Status</th>
+                                    <td>@appointment.Status</td>
+                                </tr>
+                                <tr>
+                                    <th>Total Cost</th>
+                                    <td>@appointment.TotalCost.ToString("C")</td>
+                                </tr>
+                                <tr>
+                                    <th>Service Type</th>
+                                    <td>@appointment.ServiceType</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p>No appointment information available</p>
+                    }
+                </div>
+            </div>
+
+            <div class="mt-4">
+                @if (CanDelete)
+                {
+                    <button class="btn btn-danger me-2" @onclick="() => DeletePayment(payment.PaymentId)">Delete</button>
+                }
+                <button class="btn btn-warning me-2" @onclick="() => Edit(payment.PaymentId)">Edit</button>
+                <button class="btn btn-secondary" @onclick="GoBack">Back</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-3">
+                    @errorMessage
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Payment? payment;
+    private Appointment? appointment;
+    private bool CanDelete = false;
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        payment = await paymentService.GetById(Id);
+
+        if (payment != null)
+        {
+            appointment = await appointmentService.GetById(payment.AppointmentId);
+        }
+
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user != null && user.Identity?.IsAuthenticated == true)
+        {
+            // Only Admin users can delete payments
+            CanDelete = user.IsInRole("Admin");
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Pending" => "bg-warning",
+            "Processing" => "bg-info",
+            "Completed" => "bg-success",
+            "Failed" => "bg-danger",
+            "Refunded" => "bg-secondary",
+            _ => "bg-primary"
+        };
+    }
+
+    private async Task DeletePayment(int id)
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user == null || !user.IsInRole("Admin"))
+        {
+            errorMessage = "You don't have permission to delete this payment!";
+            return;
+        }
+
+        var result = await paymentService.Delete(id);
+        if (result)
+        {
+            nav.NavigateTo("/Payment/PaymentList", true);
+        }
+        else
+        {
+            errorMessage = "Failed to delete payment!";
+        }
+    }
+
+    private void Edit(int id)
+    {
+        nav.NavigateTo($"/Payment/PaymentEdit/{id}");
+    }
+
+    private void GoBack()
+    {
+        nav.NavigateTo("/Payment/PaymentList");
+    }
+}

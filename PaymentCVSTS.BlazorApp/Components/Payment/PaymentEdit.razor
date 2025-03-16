@@ -1,0 +1,128 @@
+﻿@page "/Payment/PaymentEdit/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using PaymentCVSTS.Services.Interfaces
+@inject IPaymentService paymentService
+@inject IAppointmentService appointmentService
+@attribute [Authorize(Roles = "Admin,Doctor")]
+
+<PageTitle>Edit Payment</PageTitle>
+
+<h3>Edit Payment</h3>
+
+@if (payment == null)
+{
+    <div class="d-flex justify-content-center">
+        <p>Loading...</p>
+    </div>
+}
+else
+{
+    <EditForm Model="payment" OnValidSubmit="UpdatePayment">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Payment ID</label>
+                    <InputNumber class="form-control" @bind-Value="payment.PaymentId" disabled />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Amount</label>
+                    <InputNumber class="form-control" @bind-Value="AmountAsInt" required />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Payment Status</label>
+                    <select class="form-control" @bind="payment.PaymentStatus">
+                        <option value="Pending">Pending</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Failed">Failed</option>
+                        <option value="Refunded">Refunded</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Payment Method</label>
+                    <select class="form-control" @bind="payment.PaymentMethod">
+                        <option value="Cash">Cash</option>
+                        <option value="Credit Card">Credit Card</option>
+                        <option value="Debit Card">Debit Card</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Mobile Payment">Mobile Payment</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Payment Date</label>
+                    <InputDate class="form-control" @bind-Value="payment.PaymentDate" />
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                @if (appointment != null)
+                {
+                    <div class="card">
+                        <div class="card-header">
+                            <h6>Appointment Details</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Appointment ID:</strong> @appointment.AppointmentId</p>
+                            <p><strong>Booking Date:</strong> @appointment.BookingDate.ToString("yyyy-MM-dd HH:mm")</p>
+                            <p><strong>Service Type:</strong> @appointment.ServiceType</p>
+                            <p><strong>Total Cost:</strong> @appointment.TotalCost.ToString("C")</p>
+                            <p><strong>Status:</strong> @appointment.Status</p>
+                            <p><strong>Payment Status:</strong> @appointment.PaymentStatus</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="button" class="btn btn-secondary" @onclick="GoBack">Cancel</button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Payment? payment;
+    private Appointment? appointment;
+
+    protected override async Task OnInitializedAsync()
+    {
+        payment = await paymentService.GetById(Id);
+
+        if (payment != null)
+        {
+            appointment = await appointmentService.GetById(payment.AppointmentId);
+        }
+    }
+
+    private async Task UpdatePayment()
+    {
+        if (payment != null)
+        {
+            await paymentService.Update(payment);
+            nav.NavigateTo($"/Payment/PaymentDetail/{payment.PaymentId}");
+        }
+    }
+
+    private void GoBack()
+    {
+        nav.NavigateTo("/Payment/PaymentList");
+    }
+
+    // Helper property to display/edit amount as integer
+    private int AmountAsInt
+    {
+        get => payment != null ? (int)payment.Amount : 0;
+        set { if (payment != null) payment.Amount = value; }
+    }
+}

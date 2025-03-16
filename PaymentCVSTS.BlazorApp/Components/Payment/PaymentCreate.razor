@@ -1,0 +1,182 @@
+﻿@page "/Payment/PaymentCreate"
+@using Microsoft.AspNetCore.Authorization
+@using PaymentCVSTS.Services.Interfaces
+@inject IPaymentService paymentService
+@inject IAppointmentService appointmentService
+@attribute [Authorize(Roles = "Admin,Doctor")]
+
+<PageTitle>Create Payment</PageTitle>
+
+<h3>Create New Payment</h3>
+
+<EditForm Model="payment" OnValidSubmit="ValidateAndCreatePayment">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Amount</label>
+                <InputNumber class="form-control" @bind-Value="AmountAsInt" required />
+                @if (!string.IsNullOrEmpty(amountError))
+                {
+                    <div class="text-danger">@amountError</div>
+                }
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Payment Status</label>
+                <select class="form-control" @bind="payment.PaymentStatus">
+                    <option value="Pending">Pending</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Failed">Failed</option>
+                    <option value="Refunded">Refunded</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Payment Method</label>
+                <select class="form-control" @bind="payment.PaymentMethod">
+                    <option value="Cash">Cash</option>
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Debit Card">Debit Card</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Mobile Payment">Mobile Payment</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Payment Date</label>
+                <InputDate class="form-control" @bind-Value="payment.PaymentDate" />
+                @if (!string.IsNullOrEmpty(dateError))
+                {
+                    <div class="text-danger">@dateError</div>
+                }
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Select Appointment</label>
+                <select class="form-control" value="@payment.AppointmentId" @onchange="AppointmentSelected">
+                    <option value="0">-- Select Appointment --</option>
+                    @if (appointments != null)
+                    {
+                        @foreach (var appointment in appointments)
+                        {
+                            <option value="@appointment.AppointmentId">
+                                #@appointment.AppointmentId - @appointment.BookingDate.ToString("yyyy-MM-dd") - @appointment.TotalCost.ToString("C")
+                            </option>
+                        }
+                    }
+                </select>
+            </div>
+
+            @if (selectedAppointment != null)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h6>Appointment Details</h6>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Booking Date:</strong> @selectedAppointment.BookingDate.ToString("yyyy-MM-dd HH:mm")</p>
+                        <p><strong>Service Type:</strong> @selectedAppointment.ServiceType</p>
+                        <p><strong>Total Cost:</strong> @selectedAppointment.TotalCost.ToString("C")</p>
+                        <p><strong>Status:</strong> @selectedAppointment.Status</p>
+                        <p><strong>Payment Status:</strong> @selectedAppointment.PaymentStatus</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-success">Create</button>
+        <button type="button" class="btn btn-secondary" @onclick="GoBack">Cancel</button>
+    </div>
+</EditForm>
+
+@code {
+    private Payment payment = new()
+        {
+            PaymentDate = DateOnly.FromDateTime(DateTime.Today),
+            PaymentStatus = "Pending",
+            PaymentMethod = "Cash"
+        };
+
+    private List<Appointment>? appointments;
+    private Appointment? selectedAppointment;
+    private string amountError = "";
+    private string dateError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        appointments = await appointmentService.GetAllAsync();
+    }
+
+    private async Task AppointmentSelected(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int appointmentId) && appointmentId > 0)
+        {
+            payment.AppointmentId = appointmentId;
+            selectedAppointment = await appointmentService.GetById(appointmentId);
+            // Clear previous errors when selecting a new appointment
+            dateError = "";
+        }
+        else
+        {
+            payment.AppointmentId = 0;
+            selectedAppointment = null;
+        }
+    }
+
+    private async Task ValidateAndCreatePayment()
+    {
+        // Reset error messages
+        amountError = "";
+        dateError = "";
+
+        bool isValid = true;
+
+        // Check if amount is greater than 0
+        if (payment.Amount <= 0)
+        {
+            amountError = "Amount must be greater than 0";
+            isValid = false;
+        }
+
+        // Check if payment date is not before booking date
+        if (selectedAppointment != null)
+        {
+            var bookingDateOnly = DateOnly.FromDateTime(selectedAppointment.BookingDate.Date);
+            if (payment.PaymentDate < bookingDateOnly)
+            {
+                dateError = "Payment date cannot be before booking date";
+                isValid = false;
+            }
+        }
+
+        // If validation passes, create payment
+        if (isValid && payment.AppointmentId > 0)
+        {
+            int paymentId = await paymentService.Create(payment);
+            if (paymentId > 0)
+            {
+                nav.NavigateTo("/Payment/PaymentList");
+            }
+        }
+    }
+
+    private void GoBack()
+    {
+        nav.NavigateTo("/Payment/PaymentList");
+    }
+
+    // Helper property to display/edit amount as integer
+    private int AmountAsInt
+    {
+        get => (int)payment.Amount;
+        set => payment.Amount = value;
+    }
+}

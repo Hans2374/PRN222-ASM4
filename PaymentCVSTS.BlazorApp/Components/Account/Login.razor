@@ -1,0 +1,91 @@
+﻿@page "/Account/Login"
+@using Microsoft.AspNetCore.Antiforgery
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.WebUtilities
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager NavigationManager
+@inject IAntiforgery Antiforgery
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Login - Payment System</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="text-center">Login</h3>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger">
+                        @errorMessage
+                    </div>
+                }
+
+                <form action="/Account/Login" method="post" @onsubmit="PreventDefaultSubmit">
+                    <input name="__RequestVerificationToken" type="hidden" value="@requestToken" />
+
+                    <div class="form-group mb-3">
+                        <label>Username</label>
+                        <input type="text" class="form-control" name="username" value="@loginModel.Username" 
+                               @oninput="(e) => loginModel.Username = e.Value?.ToString()" required />
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label>Password</label>
+                        <input type="password" class="form-control" name="password" value="@loginModel.Password" 
+                               @oninput="(e) => loginModel.Password = e.Value?.ToString()" required />
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary" @onclick="SubmitForm">Login</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new LoginModel();
+    private string? errorMessage;
+    private string? requestToken;
+    private ElementReference formRef;
+
+    protected override void OnInitialized()
+    {
+        var tokens = Antiforgery.GetAndStoreTokens(HttpContextAccessor.HttpContext);
+        requestToken = tokens.RequestToken;
+
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("error", out var error))
+        {
+            errorMessage = error == "InvalidCredentials" 
+                ? "Invalid username or password" 
+                : "An error occurred during login";
+        }
+    }
+
+    private void PreventDefaultSubmit(EventArgs e)
+    {
+        // This prevents the default browser form submission
+        // We'll handle it explicitly in the SubmitForm method
+    }
+
+    private async Task SubmitForm()
+    {
+        // Submit the form programmatically
+        await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('form').submit()");
+    }
+
+    public class LoginModel
+    {
+        [Required(ErrorMessage = "Username is required")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        public string Password { get; set; } = string.Empty;
+    }
+}
