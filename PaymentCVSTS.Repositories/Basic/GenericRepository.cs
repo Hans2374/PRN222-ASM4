@@ -39,16 +39,19 @@ namespace PaymentCVSTS.Repositories.Basic
 
         public void Update(T entity)
         {
-            var tracker = _context.Attach(entity);
-            tracker.State = EntityState.Modified;
+            // Use Update instead of Attach to handle tracking conflicts
+            _context.Update(entity);
             _context.SaveChanges();
         }
 
         public async Task<int> UpdateAsync(T entity)
         {
-            var tracker = _context.Attach(entity);
-            tracker.State = EntityState.Modified;
-            return await _context.SaveChangesAsync();
+            // Create a new context for the update operation to avoid tracking conflicts
+            using (var freshContext = new SP25_PRN222_NET1704_PRJ_G5_CVSTSContext())
+            {
+                freshContext.Update(entity);
+                return await freshContext.SaveChangesAsync();
+            }
         }
 
         public bool Remove(T entity)
@@ -130,6 +133,5 @@ namespace PaymentCVSTS.Repositories.Basic
 
             return entity;
         }
-
     }
 }

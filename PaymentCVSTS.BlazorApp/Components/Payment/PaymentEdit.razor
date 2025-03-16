@@ -28,17 +28,19 @@ else
 
                 <div class="mb-3">
                     <label class="form-label">Amount</label>
-                    <InputNumber class="form-control" @bind-Value="AmountAsInt" required />
+                    <InputNumber class="form-control" @bind-Value="payment.Amount" required />
+                    @if (!string.IsNullOrEmpty(amountError))
+                    {
+                        <div class="text-danger">@amountError</div>
+                    }
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Payment Status</label>
                     <select class="form-control" @bind="payment.PaymentStatus">
                         <option value="Pending">Pending</option>
-                        <option value="Processing">Processing</option>
                         <option value="Completed">Completed</option>
                         <option value="Failed">Failed</option>
-                        <option value="Refunded">Refunded</option>
                     </select>
                 </div>
 
@@ -56,6 +58,10 @@ else
                 <div class="mb-3">
                     <label class="form-label">Payment Date</label>
                     <InputDate class="form-control" @bind-Value="payment.PaymentDate" />
+                    @if (!string.IsNullOrEmpty(dateError))
+                    {
+                        <div class="text-danger">@dateError</div>
+                    }
                 </div>
             </div>
 
@@ -84,6 +90,13 @@ else
             <button type="button" class="btn btn-secondary" @onclick="GoBack">Cancel</button>
         </div>
     </EditForm>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3">
+            @errorMessage
+        </div>
+    }
 }
 
 @code {
@@ -92,14 +105,24 @@ else
 
     private Payment? payment;
     private Appointment? appointment;
+    private string errorMessage = "";
+    private string amountError = "";
+    private string dateError = "";
 
     protected override async Task OnInitializedAsync()
     {
-        payment = await paymentService.GetById(Id);
-
-        if (payment != null)
+        try
         {
-            appointment = await appointmentService.GetById(payment.AppointmentId);
+            payment = await paymentService.GetById(Id);
+
+            if (payment != null)
+            {
+                appointment = await appointmentService.GetById(payment.AppointmentId);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading payment: {ex.Message}";
         }
     }
 
@@ -107,20 +130,54 @@ else
     {
         if (payment != null)
         {
-            await paymentService.Update(payment);
-            nav.NavigateTo($"/Payment/PaymentDetail/{payment.PaymentId}");
+            // Reset error messages
+            amountError = "";
+            dateError = "";
+            errorMessage = "";
+
+            bool isValid = true;
+
+            // Check if amount is missing or not greater than 0
+            if (payment.Amount <= 0)
+            {
+                amountError = "Amount must be greater than 0";
+                isValid = false;
+            }
+
+            // Check if payment date is valid
+            if (payment.PaymentDate == default)
+            {
+                dateError = "Payment date is required";
+                isValid = false;
+            }
+            // Check if payment date is not before booking date
+            else if (appointment != null)
+            {
+                var bookingDateOnly = DateOnly.FromDateTime(appointment.BookingDate.Date);
+                if (payment.PaymentDate < bookingDateOnly)
+                {
+                    dateError = "Payment date cannot be before booking date";
+                    isValid = false;
+                }
+            }
+
+            if (isValid)
+            {
+                try
+                {
+                    await paymentService.Update(payment);
+                    nav.NavigateTo("/Payment/PaymentList");
+                }
+                catch (Exception ex)
+                {
+                    errorMessage = $"Error updating payment: {ex.Message}";
+                }
+            }
         }
     }
 
     private void GoBack()
     {
         nav.NavigateTo("/Payment/PaymentList");
-    }
-
-    // Helper property to display/edit amount as integer
-    private int AmountAsInt
-    {
-        get => payment != null ? (int)payment.Amount : 0;
-        set { if (payment != null) payment.Amount = value; }
     }
 }
