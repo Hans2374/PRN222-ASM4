@@ -1,130 +1,257 @@
 ﻿@page "/Payment/PaymentCreate"
 @using PaymentCVSTS.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
 @inject IPaymentService paymentService
 @inject IAppointmentService appointmentService
+@inject NavigationManager navigationManager
+@attribute [Authorize(Policy = "RequireAdminRole")]
 
 <PageTitle>Create Payment</PageTitle>
 
-<h3>Create New Payment</h3>
-
-<EditForm Model="payment" OnValidSubmit="ValidateAndCreatePayment">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+<div class="container-fluid">
+    <h1>Create Payment</h1>
+    <hr />
 
     <div class="row">
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label class="form-label">Amount</label>
-                <InputNumber class="form-control" @bind-Value="payment.Amount" required />
-                @if (!string.IsNullOrEmpty(amountError))
-                {
-                    <div class="text-danger">@amountError</div>
-                }
-            </div>
+        <div class="col-md-12">
+            <form id="createPaymentForm" @onsubmit="HandleValidSubmit">
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Payment Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group mb-3">
+                                    <label for="Payment_Amount" class="form-label">Amount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input id="Payment_Amount" class="form-control" type="number" step="0.01"
+                                               value="@payment.Amount" @onchange="OnAmountChanged" />
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(amountError))
+                                    {
+                                        <div class="text-danger mt-1">@amountError</div>
+                                    }
+                                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Payment Status</label>
-                <select class="form-control" @bind="payment.PaymentStatus">
-                    <option value="Pending">Pending</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Failed">Failed</option>
-                </select>
-            </div>
+                                <div class="form-group mb-3">
+                                    <label for="Payment_PaymentMethod" class="form-label">Payment Method</label>
+                                    <select id="Payment_PaymentMethod" class="form-select" value="@payment.PaymentMethod" @onchange="OnMethodChanged">
+                                        <option value="">-- Select Payment Method --</option>
+                                        <option value="Cash">Cash</option>
+                                        <option value="Credit Card">Credit Card</option>
+                                        <option value="Debit Card">Debit Card</option>
+                                        <option value="Bank Transfer">Bank Transfer</option>
+                                        <option value="Mobile Payment">Mobile Payment</option>
+                                    </select>
+                                    @if (!string.IsNullOrEmpty(methodError))
+                                    {
+                                        <div class="text-danger mt-1">@methodError</div>
+                                    }
+                                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Payment Method</label>
-                <select class="form-control" @bind="payment.PaymentMethod">
-                    <option value="Cash">Cash</option>
-                    <option value="Credit Card">Credit Card</option>
-                    <option value="Debit Card">Debit Card</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Mobile Payment">Mobile Payment</option>
-                </select>
-            </div>
+                                <div class="form-group mb-3">
+                                    <label for="Payment_PaymentStatus" class="form-label">Payment Status</label>
+                                    <select id="Payment_PaymentStatus" class="form-select" value="@payment.PaymentStatus" @onchange="OnStatusChanged">
+                                        <option value="">-- Select Payment Status --</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="Completed">Completed</option>
+                                        <option value="Failed">Failed</option>
+                                    </select>
+                                    @if (!string.IsNullOrEmpty(statusError))
+                                    {
+                                        <div class="text-danger mt-1">@statusError</div>
+                                    }
+                                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Payment Date</label>
-                <InputDate class="form-control" @bind-Value="payment.PaymentDate" />
-                @if (!string.IsNullOrEmpty(dateError))
-                {
-                    <div class="text-danger">@dateError</div>
-                }
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label class="form-label">Select Appointment</label>
-                <select class="form-control" value="@payment.AppointmentId" @onchange="AppointmentSelected">
-                    <option value="0">-- Select Appointment --</option>
-                    @if (appointments != null)
-                    {
-                        @foreach (var appointment in appointments)
-                        {
-                            <option value="@appointment.AppointmentId">
-                                #@appointment.AppointmentId - @appointment.BookingDate.ToString("yyyy-MM-dd") - @appointment.TotalCost.ToString("C")
-                            </option>
-                        }
-                    }
-                </select>
-                @if (!string.IsNullOrEmpty(appointmentError))
-                {
-                    <div class="text-danger">@appointmentError</div>
-                }
-            </div>
-
-            @if (selectedAppointment != null)
-            {
-                <div class="card">
-                    <div class="card-header">
-                        <h6>Appointment Details</h6>
+                                <div class="form-group mb-3">
+                                    <label for="Payment_PaymentDate" class="form-label">Payment Date</label>
+                                    <input id="Payment_PaymentDate" class="form-control" type="date"
+                                           placeholder="dd/mm/yyyy"
+                                           value="@paymentDateString" @onchange="OnPaymentDateChanged" />
+                                    @if (!string.IsNullOrEmpty(dateError))
+                                    {
+                                        <div class="text-danger mt-1">@dateError</div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <p><strong>Booking Date:</strong> @selectedAppointment.BookingDate.ToString("yyyy-MM-dd HH:mm")</p>
-                        <p><strong>Service Type:</strong> @selectedAppointment.ServiceType</p>
-                        <p><strong>Total Cost:</strong> @selectedAppointment.TotalCost.ToString("C")</p>
-                        <p><strong>Status:</strong> @selectedAppointment.Status</p>
-                        <p><strong>Payment Status:</strong> @selectedAppointment.PaymentStatus</p>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Service Type</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group mb-3">
+                                    <label for="Payment_AppointmentId" class="form-label">Select Service Type</label>
+                                    <select id="Payment_AppointmentId" class="form-select"
+                                            value="@payment.AppointmentId.ToString()" @onchange="AppointmentSelected">
+                                        <option value="0">-- Select Service Type --</option>
+                                        @if (appointments != null)
+                                        {
+                                            @foreach (var appointment in appointments)
+                                            {
+                                                <option value="@appointment.AppointmentId">
+                                                    #@appointment.AppointmentId - @appointment.ServiceType - $@appointment.TotalCost
+                                                </option>
+                                            }
+                                        }
+                                    </select>
+                                    @if (!string.IsNullOrEmpty(appointmentError))
+                                    {
+                                        <div class="text-danger mt-1">@appointmentError</div>
+                                    }
+                                </div>
+
+                                @if (selectedAppointment != null)
+                                {
+                                    <div class="alert alert-info mt-4">
+                                        <h6>Service Details</h6>
+                                        <hr />
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>Service Type:</strong> @(selectedAppointment.ServiceType ?? "N/A")</p>
+                                                <p><strong>Total Cost:</strong> $@selectedAppointment.TotalCost.ToString("0.00")</p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>Booking Date:</strong> @selectedAppointment.BookingDate.ToString("dd/MM/yyyy")</p>
+                                                <p><strong>Status:</strong> @selectedAppointment.Status</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-secondary mt-4">
+                                        <p class="text-center mb-0">Please select a service to see details.</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     </div>
                 </div>
-            }
+
+                @if (!string.IsNullOrEmpty(formError))
+                {
+                    <div class="alert alert-danger">
+                        @formError
+                    </div>
+                }
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                                <i class="bi bi-arrow-left me-1"></i> Back to List
+                            </button>
+                            <div>
+                                <button type="button" class="btn btn-outline-secondary me-2" @onclick="ResetForm">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                                </button>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-check-circle me-1"></i> Create Payment
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
-
-    <div class="mt-4">
-        <button type="submit" class="btn btn-success">Create</button>
-        <button type="button" class="btn btn-secondary" @onclick="GoBack">Cancel</button>
-    </div>
-</EditForm>
+</div>
 
 @code {
-    private Payment payment = new()
-        {
-            PaymentDate = DateOnly.FromDateTime(DateTime.Today),
-            PaymentStatus = "Pending",
-            PaymentMethod = "Cash"
-        };
-
+    private Payment payment = new Payment();
     private List<Appointment>? appointments;
     private Appointment? selectedAppointment;
+    private string paymentDateString = "";
+
+    // Error messages
     private string amountError = "";
+    private string methodError = "";
+    private string statusError = "";
     private string dateError = "";
     private string appointmentError = "";
+    private string formError = "";
 
     protected override async Task OnInitializedAsync()
     {
-        appointments = await appointmentService.GetAllAsync();
+        // Initialize payment with empty values to match screenshot
+        payment = new Payment
+            {
+                Amount = 0,
+                PaymentStatus = "",
+                PaymentMethod = "",
+                AppointmentId = 0
+            };
+
+        // Set date to empty string without error
+        paymentDateString = "";
+
+        try
+        {
+            // Load appointments for dropdown
+            appointments = await appointmentService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            formError = $"Error loading appointments: {ex.Message}";
+        }
+    }
+
+    private void OnAmountChanged(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out decimal amount))
+        {
+            payment.Amount = amount;
+            amountError = "";
+        }
+        else
+        {
+            amountError = "Invalid amount";
+        }
+    }
+
+    private void OnMethodChanged(ChangeEventArgs e)
+    {
+        payment.PaymentMethod = e.Value?.ToString() ?? "";
+        methodError = string.IsNullOrEmpty(payment.PaymentMethod) ? "Payment method is required" : "";
+    }
+
+    private void OnStatusChanged(ChangeEventArgs e)
+    {
+        payment.PaymentStatus = e.Value?.ToString() ?? "";
+        statusError = string.IsNullOrEmpty(payment.PaymentStatus) ? "Payment status is required" : "";
     }
 
     private async Task AppointmentSelected(ChangeEventArgs e)
     {
-        if (int.TryParse(e.Value?.ToString(), out int appointmentId) && appointmentId > 0)
+        int appointmentId = 0;
+
+        if (int.TryParse(e.Value?.ToString(), out appointmentId) && appointmentId > 0)
         {
-            payment.AppointmentId = appointmentId;
-            selectedAppointment = await appointmentService.GetById(appointmentId);
-            // Clear previous errors when selecting a new appointment
-            dateError = "";
-            appointmentError = "";
+            try
+            {
+                payment.AppointmentId = appointmentId;
+                selectedAppointment = await appointmentService.GetById(appointmentId);
+
+                // Use the appointment's total cost as the default payment amount
+                if (selectedAppointment != null && payment.Amount == 0)
+                {
+                    payment.Amount = selectedAppointment.TotalCost;
+                }
+
+                // Clear appointment error if it was previously set
+                appointmentError = "";
+            }
+            catch (Exception ex)
+            {
+                appointmentError = $"Error loading appointment details: {ex.Message}";
+                selectedAppointment = null;
+            }
         }
         else
         {
@@ -133,59 +260,150 @@
         }
     }
 
-    private async Task ValidateAndCreatePayment()
+    private void OnPaymentDateChanged(ChangeEventArgs e)
     {
-        // Reset error messages
-        amountError = "";
-        dateError = "";
-        appointmentError = "";
+        paymentDateString = e.Value?.ToString() ?? "";
 
-        bool isValid = true;
-
-        // Check if appointment is selected
-        if (payment.AppointmentId <= 0)
+        if (DateOnly.TryParse(paymentDateString, out DateOnly parsedDate))
         {
-            appointmentError = "Please select an appointment";
-            isValid = false;
+            payment.PaymentDate = parsedDate;
+            dateError = "";
         }
-
-        // Check if amount is missing or not greater than 0
-        if (payment.Amount <= 0)
+        else if (!string.IsNullOrEmpty(paymentDateString))
         {
-            amountError = "Amount must be greater than 0";
-            isValid = false;
+            dateError = "Invalid date format";
         }
+    }
 
-        // Check if payment date is valid
-        if (payment.PaymentDate == default)
-        {
-            dateError = "Payment date is required";
-            isValid = false;
-        }
-        // Check if payment date is not before booking date
-        else if (selectedAppointment != null)
-        {
-            var bookingDateOnly = DateOnly.FromDateTime(selectedAppointment.BookingDate.Date);
-            if (payment.PaymentDate < bookingDateOnly)
-            {
-                dateError = "Payment date cannot be before booking date";
-                isValid = false;
-            }
-        }
+    private async Task HandleValidSubmit()
+    {
+        // Reset all error messages
+        ResetErrors();
 
-        // If validation passes, create payment
+        // Validate all required fields
+        bool isValid = ValidateForm();
+
         if (isValid)
         {
-            int paymentId = await paymentService.Create(payment);
-            if (paymentId > 0)
+            try
             {
-                nav.NavigateTo("/Payment/PaymentList");
+                // Parse the payment date if not already done
+                if (!string.IsNullOrEmpty(paymentDateString) &&
+                    DateOnly.TryParse(paymentDateString, out DateOnly date))
+                {
+                    payment.PaymentDate = date;
+                }
+                else
+                {
+                    dateError = "Invalid date format";
+                    return;
+                }
+
+                // Validate payment date is not before appointment date
+                if (selectedAppointment != null)
+                {
+                    DateOnly appointmentDate = DateOnly.FromDateTime(selectedAppointment.BookingDate.Date);
+                    if (payment.PaymentDate < appointmentDate)
+                    {
+                        dateError = "Payment date cannot be before the appointment date";
+                        return;
+                    }
+                }
+
+                // Create payment
+                int paymentId = await paymentService.Create(payment);
+
+                if (paymentId > 0)
+                {
+                    // Navigate back to payment list
+                    navigationManager.NavigateTo("/Payment/PaymentList");
+                }
+                else
+                {
+                    formError = "Failed to create payment. Please try again.";
+                }
+            }
+            catch (Exception ex)
+            {
+                formError = $"Error creating payment: {ex.Message}";
             }
         }
     }
 
+    private bool ValidateForm()
+    {
+        bool isValid = true;
+
+        // Validate amount
+        if (payment.Amount <= 0)
+        {
+            amountError = "Amount must be greater than zero";
+            isValid = false;
+        }
+
+        // Validate payment method
+        if (string.IsNullOrWhiteSpace(payment.PaymentMethod))
+        {
+            methodError = "Payment method is required";
+            isValid = false;
+        }
+
+        // Validate payment status
+        if (string.IsNullOrWhiteSpace(payment.PaymentStatus))
+        {
+            statusError = "Payment status is required";
+            isValid = false;
+        }
+
+        // Validate date
+        if (string.IsNullOrWhiteSpace(paymentDateString))
+        {
+            dateError = "Payment date is required";
+            isValid = false;
+        }
+        else if (!DateOnly.TryParse(paymentDateString, out _))
+        {
+            dateError = "Invalid date format";
+            isValid = false;
+        }
+
+        // Validate appointment
+        if (payment.AppointmentId <= 0)
+        {
+            appointmentError = "You must select a service";
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    private void ResetErrors()
+    {
+        amountError = "";
+        methodError = "";
+        statusError = "";
+        dateError = "";
+        appointmentError = "";
+        formError = "";
+    }
+
+    private void ResetForm()
+    {
+        payment = new Payment
+            {
+                Amount = 0,
+                PaymentStatus = "",
+                PaymentMethod = "",
+                AppointmentId = 0
+            };
+
+        paymentDateString = "";
+        selectedAppointment = null;
+        ResetErrors();
+    }
+
     private void GoBack()
     {
-        nav.NavigateTo("/Payment/PaymentList");
+        navigationManager.NavigateTo("/Payment/PaymentList");
     }
 }

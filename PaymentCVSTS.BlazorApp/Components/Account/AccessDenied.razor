@@ -1,11 +1,15 @@
 ﻿@page "/Account/AccessDenied"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+@inject NavigationManager navigationManager
 
 <PageTitle>Access Denied</PageTitle>
 
 <div class="container">
     <div class="row justify-content-center mt-5">
         <div class="col-md-6">
-            <div class="card">
+            <div class="card shadow border-danger">
                 <div class="card-header bg-danger text-white">
                     <h3 class="text-center mb-0">Access Denied</h3>
                 </div>
@@ -13,14 +17,56 @@
                     <div class="mb-4">
                         <i class="bi bi-exclamation-triangle-fill" style="font-size: 4rem; color: #dc3545;"></i>
                     </div>
-                    <h5>You do not have permission to access this resource.</h5>
-                    <p class="mt-3">Please log in with an account that has the required permissions or contact your administrator.</p>
+
+                    <CascadingAuthenticationState>
+                        <AuthorizeView>
+                            <Authorized>
+                                <h5>Your role does not have permission to access this resource.</h5>
+                                <p class="mt-3">
+                                    Hello, <strong>@context.User.Identity?.Name</strong>! Your current role
+                                    <strong>(@GetRoleName(context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value))</strong>
+                                    does not have permission to access the Payment Management system.
+                                </p>
+                                <p>Only administrators can access the payment system.</p>
+                            </Authorized>
+                            <NotAuthorized>
+                                <h5>You do not have permission to access this resource.</h5>
+                                <p class="mt-3">Please log in with an account that has the required permissions.</p>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </CascadingAuthenticationState>
+
                     <div class="mt-4">
-                        <a href="/" class="btn btn-primary me-2">Go Home</a>
-                        <a href="/Account/Login" class="btn btn-outline-secondary">Log In</a>
+                        <CascadingAuthenticationState>
+                            <AuthorizeView>
+                                <Authorized>
+                                    <a href="/Account/Logout" class="btn btn-outline-secondary">Log Out</a>
+                                </Authorized>
+                                <NotAuthorized>
+                                    <a href="/Account/Login" class="btn btn-outline-secondary">Log In</a>
+                                </NotAuthorized>
+                            </AuthorizeView>
+                        </CascadingAuthenticationState>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@code {
+    private string GetRoleName(string? roleId)
+    {
+        if (string.IsNullOrEmpty(roleId))
+            return "Unknown";
+
+        return roleId switch
+        {
+            "1" => "Administrator",
+            "2" => "Doctor",
+            "3" => "Receptionist",
+            "4" => "Nurse",
+            _ => $"Unknown Role ({roleId})"
+        };
+    }
+}

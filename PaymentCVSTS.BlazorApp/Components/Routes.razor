@@ -11,12 +11,7 @@
                 }
                 else
                 {
-                    <PageTitle>Access Denied</PageTitle>
-                    <LayoutView Layout="typeof(Layout.MainLayout)">
-                        <div class="alert alert-danger">
-                            <p>You are not authorized to access this resource.</p>
-                        </div>
-                    </LayoutView>
+                    <RedirectToAccessDenied />
                 }
             </NotAuthorized>
         </AuthorizeRouteView>
@@ -41,6 +36,19 @@
         protected override void OnInitialized()
         {
             Navigation.NavigateTo($"/Account/Login?returnUrl={Uri.EscapeDataString(Navigation.Uri)}", true);
+        }
+    }
+
+    // This component handles redirection to the access denied page when an
+    // authenticated user tries to access a resource they're not authorized for
+    private class RedirectToAccessDenied : ComponentBase
+    {
+        [Inject]
+        private NavigationManager Navigation { get; set; } = default!;
+
+        protected override void OnInitialized()
+        {
+            Navigation.NavigateTo("/Account/AccessDenied", true);
         }
     }
 }

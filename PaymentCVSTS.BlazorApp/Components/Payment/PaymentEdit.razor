@@ -2,6 +2,7 @@
 @using PaymentCVSTS.Services.Interfaces
 @inject IPaymentService paymentService
 @inject IAppointmentService appointmentService
+@attribute [Authorize(Policy = "RequireAdminRole")]
 
 <PageTitle>Edit Payment</PageTitle>
 

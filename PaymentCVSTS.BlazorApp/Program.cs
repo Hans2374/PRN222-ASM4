@@ -27,6 +27,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Account/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
+        options.ReturnUrlParameter = "returnUrl";
+        options.Cookie.Name = "PaymentCVSTS.Auth";
     });
 
 // Add authorization
@@ -34,6 +36,13 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("RequireAuthentication", policy =>
         policy.RequireAuthenticatedUser());
+
+    // Add role-based policies
+    options.AddPolicy("RequireAdminRole", policy =>
+        policy.RequireRole("1")); // RoleId 1 is Administrator
+
+    options.AddPolicy("RequireAdminOrReceptionistRole", policy =>
+        policy.RequireRole("1", "3")); // RoleId 1 is Administrator, 3 is Receptionist
 });
 
 // Add AuthenticationStateProvider
@@ -53,6 +62,7 @@ app.UseStaticFiles();
 app.UseAntiforgery();
 
 // Add authentication middleware
+// Important: Order matters here! Authentication must come before Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
